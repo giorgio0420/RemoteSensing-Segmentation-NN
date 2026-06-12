@@ -32,7 +32,7 @@ class SatMAEppSegmenter(nn.Module):
     """
 
     def __init__(self, num_classes=8, ckpt_path="satmaepp_vitl_fmow.pth",
-                 img_size=224, freeze_encoder=True):
+                 img_size=224, freeze_encoder=True, pretrained=True):
         super().__init__()
         try:
             import timm
@@ -47,7 +47,11 @@ class SatMAEppSegmenter(nn.Module):
 
         # Scheletro ViT-L/16 (i pesi SatMAE++ vengono caricati sopra)
         self.encoder = timm.create_model("vit_large_patch16_224", pretrained=False, num_classes=0)
-        self.encoder_loaded = self._load_satmae(ckpt_path)
+        if pretrained:
+            self.encoder_loaded = self._load_satmae(ckpt_path)
+        else:
+            self.encoder_loaded = False
+            print("[SatMAE++] Encoder ViT-L RANDOM (controllo: stessa rete SENZA pretraining).")
 
         if freeze_encoder:
             for p in self.encoder.parameters():

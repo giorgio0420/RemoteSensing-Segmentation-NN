@@ -22,11 +22,12 @@ def set_seed(seed):
 
 def build_model(mode):
     """Costruisce il modello in base alla modalita' di pretraining."""
-    if mode == "satmaepp":
+    if mode in ("satmaepp", "satmaepp_rand"):
         from models.satmaepp_segmenter import SatMAEppSegmenter
         model = SatMAEppSegmenter(num_classes=Config.NUM_CLASSES,
                                   ckpt_path=Config.SATMAEPP_CKPT_PATH,
-                                  img_size=Config.IMAGE_SIZE, freeze_encoder=True)
+                                  img_size=Config.IMAGE_SIZE, freeze_encoder=True,
+                                  pretrained=(mode == "satmaepp"))
         encoder_params = None  # encoder gia' congelato by design
     elif mode == "rsp_wave":
         # Encoder RSP pre-addestrato + ramo wavelet nel decoder (migliora i bordi)
@@ -201,7 +202,7 @@ def main(args):
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description="Satellite Segmentation - training + ablation")
     p.add_argument("--mode", type=str, default=None,
-                   choices=["scratch", "imagenet", "rsp", "rsp_wave", "satmaepp"],
+                   choices=["scratch", "imagenet", "rsp", "rsp_wave", "satmaepp", "satmaepp_rand"],
                    help="override di Config.PRETRAINING_MODE")
     p.add_argument("--train-subset", dest="train_subset", type=int, default=None,
                    help="numero immagini di train (data-scarce). Default: Config")
