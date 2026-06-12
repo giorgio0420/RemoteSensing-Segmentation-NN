@@ -28,6 +28,12 @@ def build_model(mode):
                                   ckpt_path=Config.SATMAEPP_CKPT_PATH,
                                   img_size=Config.IMAGE_SIZE, freeze_encoder=True)
         encoder_params = None  # encoder gia' congelato by design
+    elif mode == "rsp_wave":
+        # Encoder RSP pre-addestrato + ramo wavelet nel decoder (migliora i bordi)
+        from models.rsp_wavelet_unet import RSPWaveletUNet
+        model = RSPWaveletUNet(num_classes=Config.NUM_CLASSES, encoder_name=Config.ENCODER_NAME,
+                               rsp_weights_path=Config.RSP_WEIGHTS_PATH, img_size=Config.IMAGE_SIZE)
+        encoder_params = model.unet.model.encoder.parameters
     else:
         model = LightweightUNet(num_classes=Config.NUM_CLASSES, encoder_name=Config.ENCODER_NAME,
                                 pretraining_mode=mode, rsp_weights_path=Config.RSP_WEIGHTS_PATH)
@@ -105,7 +111,7 @@ def main(args):
     criterion = CombinedLoss(ignore_index=Config.IGNORE_INDEX, weight=cw)
 
     # Warmup con encoder congelato ha senso solo se l'encoder e' PRETRAINED ed esiste
-    do_warmup = (mode in ("imagenet", "rsp")) and Config.FREEZE_EPOCHS > 0 and encoder_params is not None
+    do_warmup = (mode in ("imagenet", "rsp", "rsp_wave")) and Config.FREEZE_EPOCHS > 0 and encoder_params is not None
     if do_warmup:
         print(f"Backbone congelato per i primi {Config.FREEZE_EPOCHS} epoch (warmup)...")
         for p in encoder_params():
@@ -195,7 +201,7 @@ def main(args):
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description="Satellite Segmentation - training + ablation")
     p.add_argument("--mode", type=str, default=None,
-                   choices=["scratch", "imagenet", "rsp", "satmaepp"],
+                   choices=["scratch", "imagenet", "rsp", "rsp_wave", "satmaepp"],
                    help="override di Config.PRETRAINING_MODE")
     p.add_argument("--train-subset", dest="train_subset", type=int, default=None,
                    help="numero immagini di train (data-scarce). Default: Config")
