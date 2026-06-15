@@ -38,18 +38,26 @@ def set_seed(s=SEED):
 
 
 def prepare_data():
+    """Scarica DFC2020.zip ed estrae con 'unzip' di sistema (Python 3.12 rifiuta lo zip per
+    'overlapped entries'). Legge i tif da disco."""
     from huggingface_hub import hf_hub_download
+    import subprocess
     zp = hf_hub_download("GFM-Bench/DFC2020", "data/DFC2020.zip", repo_type="dataset")
-    with zipfile.ZipFile(zp) as z:
-        meta = [n for n in z.namelist() if n.endswith("metadata.csv")][0]
-        prefix = meta[: -len("metadata.csv")]
-        df = pd.read_csv(io.BytesIO(z.read(meta)))
-    return zp, prefix, df
+    out = "/content/dfc2020"
+    ddir = os.path.join(out, "DFC2020")
+    marker = os.path.join(out, ".extracted_ok")
+    if not os.path.exists(marker):
+        os.makedirs(out, exist_ok=True)
+        print("Estraggo con 'unzip' di sistema (bypassa il check zip-bomb di Python 3.12)...")
+        subprocess.run(["unzip", "-q", "-o", zp, "-d", out], check=True)
+        open(marker, "w").close()
+    df = pd.read_csv(os.path.join(ddir, "metadata.csv"))
+    return ddir, df
 
 
 class DFC2020(Dataset):
-    def __init__(self, zip_path, prefix, df_split, mode="msi", subset=None, seed=SEED, binary=False):
-        self.zip_path = zip_path; self.prefix = prefix; self._z = None
+    def __init__(self, data_dir, df_split, mode="msi", subset=None, seed=SEED, binary=False):
+        self.dir = data_dir
         self.df = df_split.reset_index(drop=True)
         self.mode = mode; self.binary = binary
         self.bands = RGB_IDX if mode == "rgb" else MSI_IDX
@@ -60,9 +68,7 @@ class DFC2020(Dataset):
 
     def _read(self, rel):
         import tifffile
-        if self._z is None:
-            self._z = zipfile.ZipFile(self.zip_path)
-        im = tifffile.imread(io.BytesIO(self._z.read(self.prefix + rel)))
+        im = tifffile.imread(os.path.join(self.dir, rel))
         if im.ndim == 2:
             im = im[..., None]
         return np.transpose(im, (2, 0, 1))
@@ -131,7 +137,7 @@ def compute_class_weights(ds, n_classes, sample=400):
             counts[c] += (lab == c).sum()
     freq = counts / max(counts.sum(), 1.0)
     med = np.median(freq[freq > 0]) if (freq > 0).any() else 1.0
-    w = np.where(freq > 0, med / np.maximum(freq, 1e-6), 1.0)
+    w = np.clip(np.where(freq > 0, med / np.maximum(freq, 1e-6), 1.0), 0.0, 10.0)  # cap per stabilita'
     print(f"class-weights: {np.round(w, 2).tolist()}")
     return torch.tensor(w, dtype=torch.float32)
 
@@ -142,9 +148,9 @@ def main(a):
     nc = 2 if a.binary else 8
     if a.model == "satmae" and a.bands == "rgb":
         a.bands = "msi"          # SatMAE-Sentinel vuole le 10 bande
-    zp, prefix, df = prepare_data()
-    tr = DFC2020(zp, prefix, df[df.split == "train"], a.bands, subset=a.subset, binary=a.binary)
-    va = DFC2020(zp, prefix, df[df.split == "val"], a.bands, subset=a.val_subset, binary=a.binary)
+    ddir, df = prepare_data()
+    tr = DFC2020(ddir, df[df.split == "train"], a.bands, subset=a.subset, binary=a.binary)
+    va = DFC2020(ddir, df[df.split == "val"], a.bands, subset=a.val_subset, binary=a.binary)
     print(f"model={a.model} | bands={a.bands} | binary={a.binary} | classes={nc} | "
           f"train {len(tr)} | val {len(va)} | dev={dev}")
     tl = DataLoader(tr, batch_size=a.batch_size, shuffle=True, num_workers=2, pin_memory=True)
