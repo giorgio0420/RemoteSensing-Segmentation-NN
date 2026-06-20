@@ -101,6 +101,11 @@ def build_model(a, n_classes):
         from satmae_sentinel import SatMAESentinelSeg
         return SatMAESentinelSeg(num_classes=n_classes, ckpt_path=a.ckpt,
                                  ft_blocks=a.ft_blocks, use_sar=(a.bands == "msi_sar"))
+    if a.model == "satmae_rgb":
+        # ViT-L SatMAE++ fMoW-RGB (il modello di Task 1) sui 3 canali RGB di Sentinel-2
+        from models.satmaepp_segmenter import SatMAEppSegmenter
+        return SatMAEppSegmenter(num_classes=n_classes, ckpt_path=a.ckpt,
+                                 img_size=224, ft_blocks=a.ft_blocks)
     import segmentation_models_pytorch as smp
     return smp.Unet(encoder_name="resnet34",
                     encoder_weights="imagenet" if not a.scratch else None,
@@ -148,7 +153,9 @@ def main(a):
     set_seed()
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     nc = 2 if a.binary else 8
-    if a.model == "satmae" and a.bands == "rgb":
+    if a.model == "satmae_rgb":
+        a.bands = "rgb"          # ViT RGB di Task 1: solo i 3 canali RGB
+    elif a.model == "satmae" and a.bands == "rgb":
         a.bands = "msi"          # SatMAE-Sentinel vuole le 10 bande
     ddir, df = prepare_data()
     tr = DFC2020(ddir, df[df.split == "train"], a.bands, subset=a.subset, binary=a.binary)
@@ -198,7 +205,7 @@ def main(a):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--model", choices=["resnet", "satmae"], default="resnet")
+    p.add_argument("--model", choices=["resnet", "satmae", "satmae_rgb"], default="resnet")
     p.add_argument("--ckpt", default="", help="checkpoint SatMAE-Sentinel (per --model satmae)")
     p.add_argument("--ft-blocks", dest="ft_blocks", type=int, default=0, help="satmae: scongela ultimi N blocchi ViT")
     p.add_argument("--bands", choices=["rgb", "msi", "msi_sar"], default="msi")
