@@ -61,12 +61,7 @@ SEN_CKPT = hf_hub_download("mubashir04/checkpoint_ViT-L_pretrain_fmow_sentinel",
 !python main.py --mode satmaepp --train-subset 300 --epochs 20 --tag satmae
 ```
 
-Results are saved to `results_summary.csv`. To run the full ablation grid (all modes + wavelet variants):
-
-```bash
-!python run_ablation.py
-```
-
+Results are saved to `results_summary.csv`.
 ### 4 — Run Study 2 (DFC2020, sensor fusion)
 
 ```bash
