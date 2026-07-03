@@ -12,8 +12,6 @@ segmentation in a data scarce scenario?** Two complementary studies on remote-se
 | **Backbones** | Swin-T U-Net (RSP), ViT-L (SatMAE++ fMoW-RGB) | ViT-L group-channel (SatMAE++ fMoW-Sentinel) |
 | **Entry point** | `main.py` | `task2_multispectral.py` |
 
-A full technical report (models, weights, comparisons, dataset-switching guide) is in **`Report_Tecnico_NN.docx`**.
-
 ---
 
 ## Quick start (Google Colab, GPU T4)
