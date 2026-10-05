@@ -22,9 +22,9 @@ segmentation in a data scarce scenario?** Two complementary studies on remote-se
 
 ```bash
 %cd /content
-!git clone https://github.com/giorgio0420/NN_segmentation.git
+!git clone https://github.com/giorgio0420/RemoteSensing-Segmentation-NN.git
 !git clone https://github.com/techmn/satmae_pp.git        # needed for Study 2 only
-%cd NN_segmentation
+%cd RemoteSensing-Segmentation-NN
 !pip install segmentation-models-pytorch tifffile timm torchgeo
 ```
 
